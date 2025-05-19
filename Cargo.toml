@@ -19,8 +19,12 @@ homepage.workspace = true
 license.workspace = true
 repository.workspace = true
 
+[[example]]
+name = "http"
+required-features = ["http"]
+
 [features]
-default = ["derive", "tracing", "telemetry", "grpc", "http", "redis"]
+default = ["derive", "tracing", "telemetry", "grpc"]
 derive = ["dep:runesys_derive"]
 # Optional capability toggles
 common = ["dep:axum", "dep:tower", "dep:tower-http"]
@@ -40,11 +44,9 @@ telemetry = [
 	"dep:opentelemetry",
 	"dep:opentelemetry_sdk",
 	"dep:opentelemetry-otlp",
-	"dep:opentelemetry-http",
 	"dep:opentelemetry-semantic-conventions"
 ]
-redis = ["dep:redis"]
-cache = ["redis", "dep:serde_json"]
+cache = ["dep:redis", "dep:serde_json"]
 db = ["dep:sqlx"]
 
 [dependencies]
@@ -80,7 +82,6 @@ tracing-opentelemetry = { version = "0.30", optional = true }
 opentelemetry = { version = "0.29", optional = true, default-features = false, features = ["trace"] }
 opentelemetry_sdk = { version = "0.29", optional = true, features = ["rt-tokio"] }
 opentelemetry-otlp = { version = "0.29", optional = true, default-features = false, features = ["trace", "logs", "metrics", "grpc-tonic"] }
-opentelemetry-http = { version = "0.29", optional = true }
 opentelemetry-semantic-conventions = { version = "0.29", features = ["semconv_experimental"], optional = true }
 
 # ───── Database / Redis ─────

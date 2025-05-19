@@ -29,14 +29,12 @@ pub struct ServiceBuilder<R>
 where
 	R: crate::Service,
 {
-	info: ServiceInfo,
-
 	#[cfg(feature = "grpc")]
 	grpc: Option<Routes>,
 	#[cfg(feature = "http")]
 	http: Option<axum::Router>,
 	#[cfg(feature = "db")]
-	pg_pool: Option<sqlx::PgPool>,
+	pg_pool: Option<PgPool>,
 
 	_inner: PhantomData<R>,
 }
@@ -51,12 +49,11 @@ where
 	R: crate::Service,
 {
 	/// Initialize tracing, load config, setup health + gRPC address
-	pub fn new(info: ServiceInfo) -> Result<Self> {
-		crate::tracing::init(&info);
-		crate::config::config(&info);
+	pub fn new() -> Result<Self> {
+		crate::tracing::init(&R::INFO);
+		crate::config::config(&R::INFO);
 
 		Ok(Self {
-			info,
 			#[cfg(feature = "grpc")]
 			grpc: None,
 
@@ -109,7 +106,7 @@ where
 		F: FnOnce(PgPool) -> Fut,
 		Fut: Future<Output = std::result::Result<(), MigrateError>>,
 	{
-		let config = crate::config::config(&self.info);
+		let config = crate::config::config(&R::INFO);
 		let pg_pool = sqlx::postgres::PgPoolOptions::new()
 			.max_connections(5)
 			.connect(config.postgres_url.as_str())
@@ -121,7 +118,7 @@ where
 
 	/// Build and run gRPC + optional HTTP + report
 	pub async fn run(mut self) -> Result<()> {
-		let config = crate::config::config(&self.info);
+		let config = crate::config::config(&R::INFO);
 
 		let mut handles: Vec<JoinHandle<Result<()>>> = Vec::new();
 
@@ -140,7 +137,7 @@ where
 			// gRPC builder
 			let grpc_builder = Server::builder()
 				.layer({
-					let mut sb = tower::ServiceBuilder::new()
+					let sb = tower::ServiceBuilder::new()
 						.layer(TraceLayer::new_for_grpc())
 						.layer(AddExtensionLayer::new(
 							health_reporter.as_ref().unwrap().clone(),
@@ -159,7 +156,7 @@ where
 
 			let grpc_addr = SocketAddr::new(config.address, config.grpc_port);
 			handles.push(tokio::spawn(async move {
-				info!("{} gRPC at {}", self.info.name, grpc_addr);
+				info!("{} gRPC at {}", R::INFO.name, grpc_addr);
 				Ok(grpc_builder.serve(grpc_addr).await?)
 			}));
 		}
@@ -189,16 +186,18 @@ where
 
 			let http_addr = SocketAddr::new(config.address, config.http_port);
 			handles.push(tokio::spawn(async move {
-				info!("{} HTTP at {}", self.info.name, http_addr);
+				info!("{} HTTP at {}", R::INFO.name, http_addr);
 				Ok(axum::serve(TcpListener::bind(http_addr).await?, router).await?)
 			}));
 		}
 
-		let (res, _, remaining) = select_all(handles).await;
-		for handle in remaining {
-			handle.abort();
+		if !handles.is_empty() {
+			let (res, _, remaining) = select_all(handles).await;
+			for handle in remaining {
+				handle.abort();
+			}
+			res.unwrap()?;
 		}
-		res.unwrap()?;
 
 		Ok(())
 	}

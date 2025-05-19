@@ -61,7 +61,7 @@ pub struct ServiceConfig {
 	#[serde(default = "default_registry_url")]
 	pub registry_url: Url,
 
-	#[cfg(feature = "redis")]
+	#[cfg(feature = "cache")]
 	#[serde(default = "default_redis_url")]
 	pub redis_url: Url,
 
@@ -80,11 +80,7 @@ pub fn config(info: &ServiceInfo) -> &'static ServiceConfig {
 	pub static CONFIG: OnceLock<ServiceConfig> = OnceLock::new();
 
 	CONFIG.get_or_init(|| {
-		let mut c: ServiceConfig = Figment::new()
-			// .merge(Toml::file("rssflow.toml"))
-			.merge(Env::raw())
-			.extract()
-			.unwrap();
+		let mut c: ServiceConfig = Figment::new().merge(Env::raw()).extract().unwrap();
 
 		#[cfg(feature = "grpc")]
 		if c.service_url.is_none() {

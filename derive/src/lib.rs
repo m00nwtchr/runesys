@@ -1,10 +1,8 @@
 use proc_macro::TokenStream;
 use quote::{ToTokens, quote};
-use syn::{
-	DeriveInput, Lit, LitStr, Meta, Path, parse_macro_input, punctuated::Punctuated, token::Comma,
-};
+use syn::{DeriveInput, LitStr, Path, parse_macro_input};
 
-#[proc_macro_derive(Service)]
+#[proc_macro_derive(Service, attributes(service, fd_set))]
 pub fn derive_service(input: TokenStream) -> TokenStream {
 	// Parse the input struct
 	let input = parse_macro_input!(input as DeriveInput);
