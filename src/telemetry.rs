@@ -8,8 +8,7 @@ use opentelemetry_sdk::{
 };
 use opentelemetry_semantic_conventions::{
 	SCHEMA_URL,
-	attribute::{SERVICE_NAME, SERVICE_VERSION},
-	resource::DEPLOYMENT_ENVIRONMENT_NAME,
+	attribute::{DEPLOYMENT_ENVIRONMENT_NAME, SERVICE_NAME, SERVICE_VERSION},
 };
 
 use crate::ServiceInfo;

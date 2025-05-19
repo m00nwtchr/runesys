@@ -20,9 +20,7 @@ use tower::util::option_layer;
 use tower_http::{add_extension::AddExtensionLayer, trace::TraceLayer};
 use tracing::info;
 
-use crate::ServiceInfo;
-
-pub type Result<T> = std::result::Result<T, crate::error::Error>;
+use crate::{ServiceInfo, error::Result};
 
 /// A generic microservice builder for gRPC + optional HTTP
 pub struct ServiceBuilder<R>
@@ -49,11 +47,11 @@ where
 	R: crate::Service,
 {
 	/// Initialize tracing, load config, setup health + gRPC address
-	pub fn new() -> Result<Self> {
+	pub fn new() -> Self {
 		crate::tracing::init(&R::INFO);
 		crate::config::config(&R::INFO);
 
-		Ok(Self {
+		Self {
 			#[cfg(feature = "grpc")]
 			grpc: None,
 
@@ -64,7 +62,7 @@ where
 			pg_pool: None,
 
 			_inner: PhantomData,
-		})
+		}
 	}
 
 	/// Register a tonic gRPC service

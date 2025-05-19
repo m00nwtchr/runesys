@@ -54,7 +54,7 @@ runesys_derive = { path = "derive", optional = true }
 # ───── Core Dependencies ─────
 thiserror = "2"
 futures = "0.3"
-tokio = { version = "1.37", features = ["macros", "rt-multi-thread"] }
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
 uuid = { version = "1.6", features = ["v4", "v5"] }
 
 # ───── Config / Serialization ─────

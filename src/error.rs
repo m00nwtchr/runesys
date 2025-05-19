@@ -1,5 +1,7 @@
 use thiserror::Error;
 
+pub(crate) type Result<T> = std::result::Result<T, crate::error::Error>;
+
 #[derive(Error, Debug)]
 pub enum Error {
 	#[error("io error")]
