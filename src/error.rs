@@ -4,6 +4,11 @@ pub(crate) type Result<T> = std::result::Result<T, crate::error::Error>;
 
 #[derive(Error, Debug)]
 pub enum Error {
+	#[error("transport error")]
+	Transport(#[from] tonic::transport::Error),
+	#[error("reflection error")]
+	Reflection(#[from] tonic_reflection::server::Error),
+
 	#[error("io error")]
 	Io(#[from] std::io::Error),
 
@@ -14,10 +19,6 @@ pub enum Error {
 	#[error("sqlx migrate error")]
 	Migrate(#[from] sqlx::migrate::MigrateError),
 
-	#[cfg(feature = "grpc")]
-	#[error("transport error")]
-	Transport(#[from] tonic::transport::Error),
-
-	#[error("unknown error")]
-	Unknown,
+	#[error(transparent)]
+	Other(#[from] Box<dyn std::error::Error + Send + Sync>),
 }

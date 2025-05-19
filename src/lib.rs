@@ -1,5 +1,9 @@
 #![warn(clippy::pedantic)]
 
+use std::convert::Infallible;
+
+use axum::http::Request;
+use tonic::{body::Body, server::NamedService, service::Routes};
 use uuid::{Uuid, uuid};
 
 #[cfg(feature = "cache")]
@@ -14,13 +18,33 @@ pub mod util;
 #[cfg(feature = "derive")]
 pub use runesys_derive::Service;
 
+use crate::service::ServiceBuilder;
+
 const NAMESPACE: Uuid = uuid!("466b8727-8f7f-4596-b59d-92b2252b2c4b");
 
 pub trait Service {
 	const INFO: ServiceInfo;
-
 	#[cfg(debug_assertions)]
 	const FILE_DESCRIPTOR_SET: &'static [u8];
+
+	type Server;
+	fn new_server(self) -> Self::Server;
+
+	fn builder(self) -> ServiceBuilder<Self>
+	where
+		Self::Server: tonic::codegen::Service<Request<Body>, Error = Infallible>
+			+ NamedService
+			+ Clone
+			+ Send
+			+ Sync
+			+ 'static,
+		<Self::Server as tonic::codegen::Service<Request<Body>>>::Response:
+			axum::response::IntoResponse,
+		<Self::Server as tonic::codegen::Service<Request<Body>>>::Future: Send + 'static,
+		Self: Sized,
+	{
+		ServiceBuilder::new(self)
+	}
 }
 
 pub struct ServiceInfo {
@@ -34,28 +58,6 @@ impl ServiceInfo {
 		Uuid::new_v5(&NAMESPACE, self.pkg.as_bytes())
 	}
 }
-
-// #[cfg(debug_assertions)]
-// pub fn add_reflection_service(
-// 	s: &mut RoutesBuilder,
-// 	name: impl Into<String>,
-// ) -> anyhow::Result<()> {
-// 	let reflection = tonic_reflection::server::Builder::configure()
-// 		.register_encoded_file_descriptor_set(FILE_DESCRIPTOR_SET)
-// 		.with_service_name(name)
-// 		.build_v1()?;
-//
-// 	s.add_service(reflection);
-// 	Ok(())
-// }
-//
-// #[cfg(not(debug_assertions))]
-// pub fn add_reflection_service(
-// 	s: &mut RoutesBuilder,
-// 	_name: impl Into<String>,
-// ) -> anyhow::Result<()> {
-// 	Ok(())
-// }
 
 pub mod tracing {
 	#[cfg(feature = "telemetry")]

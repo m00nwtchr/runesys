@@ -47,7 +47,6 @@ const fn default_option<T>() -> Option<T> {
 
 #[derive(Deserialize)]
 pub struct ServiceConfig {
-	#[cfg(feature = "grpc")]
 	#[serde(default = "default_port")]
 	pub grpc_port: u16,
 
