@@ -79,16 +79,12 @@ where
 impl<R> ServiceBuilder<R>
 where
 	R: crate::Service,
+	R::Server: NamedService,
 {
 	/// Initialize tracing, load config, setup health + gRPC address
 	pub fn new(svc: R) -> Self
 	where
-		R::Server: Service<Request<Body>, Error = Infallible>
-			+ NamedService
-			+ Clone
-			+ Send
-			+ Sync
-			+ 'static,
+		R::Server: Service<Request<Body>, Error = Infallible> + Clone + Send + Sync + 'static,
 		<R::Server as Service<Request<Body>>>::Response: axum::response::IntoResponse,
 		<R::Server as Service<Request<Body>>>::Future: Send + 'static,
 	{
@@ -104,6 +100,7 @@ where
 impl<R> ServiceBuilder<R>
 where
 	R: crate::Service,
+	R::Server: NamedService,
 {
 	/// Register a tonic gRPC service
 	pub fn with_service<S>(mut self, svc: S) -> Self
@@ -163,6 +160,7 @@ where
 
 		let health_reporter = {
 			let (hr, hs) = health_reporter();
+			hr.set_serving::<R::Server>().await;
 
 			self.grpc = self.grpc.add_service(hs);
 			hr
