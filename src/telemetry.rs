@@ -77,7 +77,6 @@ impl From<&ServiceInfo> for Resource {
 	}
 }
 
-#[cfg(feature = "grpc")]
 pub mod propagation {
 	use std::str::FromStr;
 
