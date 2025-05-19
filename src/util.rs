@@ -33,7 +33,6 @@ where
 	}
 }
 
-#[cfg(feature = "grpc")]
 pub fn try_from_any<'a, T: TryFrom<&'a prost_types::Any> + prost::Name>(
 	any: &'a prost_types::Any,
 ) -> Result<T, tonic::Status> {
@@ -45,7 +44,6 @@ pub fn try_from_any<'a, T: TryFrom<&'a prost_types::Any> + prost::Name>(
 	})
 }
 
-#[cfg(feature = "grpc")]
 pub fn interceptor<T>(mutator: impl Fn(&mut T)) -> impl FnMut(T) -> Result<T, tonic::Status> {
 	move |mut value: T| {
 		mutator(&mut value);
