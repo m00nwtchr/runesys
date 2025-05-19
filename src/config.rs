@@ -70,7 +70,6 @@ pub struct ServiceConfig {
 	#[serde(default = "default_option")]
 	pub public_url: Option<Url>,
 
-	#[cfg(feature = "grpc")]
 	#[serde(default = "default_option")]
 	pub service_url: Option<Url>,
 }
