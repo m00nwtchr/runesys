@@ -24,7 +24,7 @@ name = "http"
 required-features = ["http"]
 
 [features]
-default = ["derive", "tracing", "telemetry", "http"]
+default = ["derive", "tracing", "telemetry", "http", "redis"]
 derive = ["dep:runesys_derive"]
 # Optional capability toggles
 http = []
@@ -37,7 +37,8 @@ telemetry = [
 	"dep:opentelemetry-otlp",
 	"dep:opentelemetry-semantic-conventions"
 ]
-cache = ["dep:redis", "dep:serde_json"]
+redis = ["dep:redis"]
+cache = ["redis", "dep:serde_json"]
 db = ["dep:sqlx"]
 
 [dependencies]

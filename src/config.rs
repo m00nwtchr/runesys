@@ -60,7 +60,7 @@ pub struct ServiceConfig {
 	#[serde(default = "default_registry_url")]
 	pub registry_url: Url,
 
-	#[cfg(feature = "cache")]
+	#[cfg(feature = "redis")]
 	#[serde(default = "default_redis_url")]
 	pub redis_url: Url,
 
