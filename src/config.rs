@@ -66,6 +66,7 @@ impl Provider for Config {
 
 pub static FIGMENT: LazyLock<Figment> = LazyLock::new(|| Config::figment());
 
+#[macro_export]
 macro_rules! define_config {
 	($ty:ty) => {
 		pub fn config() -> &'static $ty {
