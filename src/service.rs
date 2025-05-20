@@ -1,4 +1,4 @@
-use std::{convert::Infallible, marker::PhantomData, net::SocketAddr};
+use std::{convert::Infallible, net::SocketAddr, pin::Pin};
 
 use futures::future::select_all;
 #[cfg(feature = "db")]
@@ -15,8 +15,13 @@ use tonic_health::server::health_reporter;
 use tower::util::option_layer;
 use tower_http::{add_extension::AddExtensionLayer, trace::TraceLayer};
 use tracing::info;
+use url::Url;
 
-use crate::error::Result;
+use crate::error::{Error, Result};
+
+type BoxFut<T> = Pin<Box<dyn Future<Output = T> + 'static>>;
+type ApplyFn<T> = Box<dyn FnOnce(T) -> T>;
+type SetupTask<T> = BoxFut<Result<Option<ApplyFn<T>>>>;
 
 /// A generic microservice builder for gRPC + optional HTTP
 pub struct ServiceBuilder<R>
@@ -29,8 +34,8 @@ where
 	#[cfg(feature = "db")]
 	pg_pool: Option<PgPool>,
 
+	setup_tasks: Vec<SetupTask<Self>>,
 	handles: Vec<JoinHandle<Result<()>>>,
-	_inner: PhantomData<R>,
 }
 
 pub struct ServiceState {
@@ -70,8 +75,8 @@ where
 			http: None,
 			#[cfg(feature = "db")]
 			pg_pool: None,
+			setup_tasks: Vec::new(),
 			handles: Vec::new(),
-			_inner: PhantomData,
 		}
 	}
 }
@@ -89,7 +94,7 @@ where
 		<R::Server as Service<Request<Body>>>::Future: Send + 'static,
 	{
 		crate::tracing::init(&R::INFO);
-		crate::config::config(&R::INFO);
+		crate::config::config();
 
 		let mut s = Self::default().with_service(svc.new_server());
 		s.grpc = add_reflection_service::<R>(s.grpc).unwrap();
@@ -131,18 +136,32 @@ where
 
 	/// Add postgres database connection
 	#[cfg(feature = "db")]
-	pub async fn with_pg<F, Fut>(mut self, init: F) -> Result<Self>
+	pub fn with_pg<F, Fut>(mut self, init: F) -> Result<Self>
 	where
-		F: FnOnce(PgPool) -> Fut,
+		F: FnOnce(PgPool) -> Fut + 'static,
 		Fut: Future<Output = std::result::Result<(), MigrateError>>,
 	{
-		let config = crate::config::config(&R::INFO);
-		let pg_pool = sqlx::postgres::PgPoolOptions::new()
-			.max_connections(5)
-			.connect(config.postgres_url.as_str())
-			.await?;
-		init(pg_pool.clone()).await?;
-		self.pg_pool = Some(pg_pool);
+		let config = crate::config::config();
+		let postgres_url = config
+			.postgres_url
+			.as_ref()
+			.map(Url::as_str)
+			.ok_or(Error::Config("Postgres URL not set".to_string()))?;
+
+		self.setup_tasks.push(Box::pin(async move {
+			let pg_pool = sqlx::postgres::PgPoolOptions::new()
+				.max_connections(5)
+				.connect(postgres_url)
+				.await?;
+			init(pg_pool.clone()).await?;
+
+			let apply: ApplyFn<Self> = Box::new(move |mut sb| {
+				sb.pg_pool = Some(pg_pool);
+				sb
+			});
+			Ok(Some(apply))
+		}));
+
 		Ok(self)
 	}
 
@@ -156,7 +175,19 @@ where
 
 	/// Build and run gRPC + optional HTTP + report
 	pub async fn run(mut self) -> Result<()> {
-		let config = crate::config::config(&R::INFO);
+		let config = crate::config::config();
+
+		let patches = futures::future::join_all(self.setup_tasks.drain(..))
+			.await
+			.into_iter()
+			.filter_map(|r| {
+				if let Err(r) = &r {
+					tracing::error!("{r}");
+				}
+				r.ok()
+			})
+			.filter_map(|opt| opt);
+		self = patches.fold(self, |acc, patch| patch(acc));
 
 		let health_reporter = {
 			let (hr, hs) = health_reporter();

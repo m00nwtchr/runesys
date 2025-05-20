@@ -4,6 +4,9 @@ pub(crate) type Result<T> = std::result::Result<T, crate::error::Error>;
 
 #[derive(Error, Debug)]
 pub enum Error {
+	#[error("config error: {0}")]
+	Config(String),
+
 	#[error("transport error")]
 	Transport(#[from] tonic::transport::Error),
 	#[error("reflection error")]
