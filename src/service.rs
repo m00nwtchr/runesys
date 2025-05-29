@@ -83,7 +83,7 @@ where
 
 impl<R> ServiceBuilder<R>
 where
-	R: crate::Service,
+	R: crate::Service + 'static,
 	R::Server: NamedService,
 {
 	/// Initialize tracing, load config, setup health + gRPC address
@@ -104,7 +104,7 @@ where
 
 impl<R> ServiceBuilder<R>
 where
-	R: crate::Service,
+	R: crate::Service + 'static,
 	R::Server: NamedService,
 {
 	/// Register a tonic gRPC service
@@ -148,7 +148,7 @@ where
 			.map(Url::as_str)
 			.ok_or(Error::Config("Postgres URL not set".to_string()))?;
 
-		self.setup_tasks.push(Box::pin(async move {
+		Ok(self.with_setup_task(Box::pin(async move {
 			let pg_pool = sqlx::postgres::PgPoolOptions::new()
 				.max_connections(5)
 				.connect(postgres_url)
@@ -160,9 +160,12 @@ where
 				sb
 			});
 			Ok(Some(apply))
-		}));
+		})))
+	}
 
-		Ok(self)
+	pub fn with_setup_task(mut self, f: SetupTask<Self>) -> Self {
+		self.setup_tasks.push(Box::pin(f));
+		self
 	}
 
 	pub fn with_task<Fut>(mut self, f: Fut) -> Self

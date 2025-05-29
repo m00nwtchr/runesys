@@ -41,7 +41,7 @@ pub trait Service {
 		<Self::Server as tonic::codegen::Service<Request<Body>>>::Response:
 			axum::response::IntoResponse,
 		<Self::Server as tonic::codegen::Service<Request<Body>>>::Future: Send + 'static,
-		Self: Sized,
+		Self: Sized + 'static,
 	{
 		ServiceBuilder::new(self)
 	}

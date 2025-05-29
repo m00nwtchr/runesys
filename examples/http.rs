@@ -37,8 +37,12 @@ impl tonic_health::pb::health_server::Health for HelloWorld {
 async fn main() {
 	HelloWorld {}
 		.builder()
-		.with_http(axum::Router::new().route("/", axum::routing::get(|| async { "Hello, World!" })))
-		.with_task(async { Ok(()) })
+		// .with_http(axum::Router::new().route("/", axum::routing::get(|| async { "Hello, World!" })))
+		.with_task(async {
+			loop {}
+
+			Ok(())
+		})
 		.run()
 		.await
 		.unwrap();
