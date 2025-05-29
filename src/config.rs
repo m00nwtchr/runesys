@@ -32,9 +32,12 @@ impl Default for Config {
 	fn default() -> Self {
 		Config {
 			grpc_port: 50051,
+			#[cfg(feature = "http")]
 			http_port: 3434,
 			address: IpAddr::V6(Ipv6Addr::UNSPECIFIED),
+			#[cfg(feature = "redis")]
 			redis_url: Url::parse("redis://valkey/").expect("Hardcoded Redis URL"),
+			#[cfg(feature = "db")]
 			postgres_url: None,
 		}
 	}
